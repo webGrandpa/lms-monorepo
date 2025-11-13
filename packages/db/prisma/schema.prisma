@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// packages/db/prisma/schema.prisma
+
+enum Role {
+  STUDENT           // სტანდარტული სტუდენტი (Default)
+  ASSISTANT  // მენტორის ასისტენტი (ეხმარება კონკრეტულ მენტორს)
+  MENTOR            // მენტორი (ამატებს თემებს, ასისტენტებს)
+  ADMIN             // ადმინისტრატორი 
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      Role     @default(STUDENT) // ნებისმიერი რეგისტრირებული Default-ად სტუდენტია
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- მენტორის/ასისტენტის იერარქია ---
+
+  // თუ ეს მომხმარებელი ასისტენტია (role = ASSISTANT),
+  // ეს ველი მიუთითებს მისი მენტორის ID-ზე.
+  mentorId  String?
+  mentor    User?   @relation("MentorToAssistants", fields: [mentorId], references: [id], onDelete: SetNull)
+  // onDelete: SetNull - ნიშნავს, რომ მენტორის წაშლის შემთხვევაში, ასისტენტი არ წაიშლება, უბრალოდ "მენტორის გარეშე" დარჩება (mentorId = null)
+
+  // თუ ეს მომხმარებელი მენტორია (role = MENTOR),
+  // ეს არის მისი ასისტენტების სია.
+  assistants User[] @relation("MentorToAssistants")
+}
